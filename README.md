@@ -1,138 +1,144 @@
 # Zepto Inventory Analysis — SQL Portfolio Project
 
-A PostgreSQL portfolio project analysing a Zepto-style quick-commerce inventory snapshot across pricing, discounts, stock availability, estimated inventory revenue and inventory weight.
+A beginner-friendly PostgreSQL data analysis project using a Zepto-style quick-commerce inventory dataset. The project explores pricing, discounts, stock availability, estimated inventory revenue, product weight and category-level inventory.
 
-**Goal:** turn SKU-level inventory data into practical business questions a quick-commerce team could use for pricing, replenishment and inventory planning.
-
-> **Data honesty note:** The current GitHub repository contains the SQL script but does not contain the CSV. Numerical findings below were validated against the public `zepto_v2.csv` source whose 3,732-row, 9-column schema matches this project's table structure. Treat these findings as representative of that dataset; if your local CSV differs, rerun the queries before quoting the numbers.
+> **Data note:** The repository's original SQL schema matches the public zepto_v2.csv dataset used for validation. The raw CSV is not committed to this repository yet. The numerical findings below were calculated from that matching dataset after applying the cleaning logic in queries/zepto_analysis.sql.
 
 ## Problem Statement
 
-Quick-commerce businesses need to balance **availability, pricing, discounts and inventory levels**. This project uses SQL to answer questions such as:
+Quick-commerce businesses need to balance availability, pricing, discounts and inventory across a large number of SKUs.
 
-- Which categories carry the most estimated inventory value?
-- Where are discounts strongest?
-- Which expensive products are unavailable?
-- Which products contribute most to category-level value?
-- Are heavily discounted products actually available?
-
-## Tech Stack
-
-- **PostgreSQL**
-- **SQL**
-- pgAdmin / DBeaver
-- GitHub
+This project uses SQL to answer questions such as:
+- Which categories carry the highest estimated inventory value?
+- Which categories offer the highest average discounts?
+- Which expensive products are out of stock?
+- Which products contribute most to category-level estimated revenue?
+- How concentrated is estimated revenue across categories?
+- Are heavily discounted products unavailable?
 
 ## Dataset
 
-Source: [Zepto v2 inventory dataset](https://github.com/Odongi-s-data-science-projects/Zepto-dataset-SQL/blob/main/zepto_v2.csv)
+The dataset contains **3,732 SKU-level records** across **14 categories**.
 
-**Source size:** 3,732 rows × 9 columns.
-
-| Column | Meaning |
+| Column | Description |
 |---|---|
-| `Category` | Product category |
-| `name` | Product name |
-| `mrp` | Maximum Retail Price; source values are in paise |
-| `discountPercent` | Discount percentage |
-| `availableQuantity` | Available inventory quantity |
-| `discountedSellingPrice` | Selling price after discount; source values are in paise |
-| `weightInGms` | Product/package weight in grams |
-| `outOfStock` | Stock availability flag |
-| `quantity` | Product quantity/pack quantity field |
+| category | Product category |
+| name | Product/SKU name |
+| mrp | Maximum retail price, stored in paise in the source |
+| discountPercent | Discount percentage |
+| availableQuantity | Currently available inventory quantity |
+| discountedSellingPrice | Selling price after discount, stored in paise |
+| weightInGms | Product/package weight in grams |
+| outOfStock | Whether the SKU is marked out of stock |
+| quantity | Quantity field provided by the dataset |
 
 ## Data Cleaning
 
-The analysis follows these steps:
+1. Checked row counts and sample records.
+2. Checked NULLs in analytical columns.
+3. Identified records with zero MRP or zero discounted selling price.
+4. Excluded zero-price records from downstream analysis.
+5. Converted MRP and discounted selling price from paise to INR using a cleaned SQL view.
+6. Used NULLIF when calculating price per gram to avoid division-by-zero errors.
 
-1. Checked row count, sample records and nulls.
-2. Checked distinct categories and stock-status distribution.
-3. Identified repeated product names.
-4. Identified records where MRP or selling price was zero.
-5. Excluded zero-price rows from analytical calculations.
-6. Converted MRP and discounted selling price from **paise to INR**.
-7. Created a `zepto_clean` SQL view so the raw table is not permanently modified and the script can be rerun safely.
+The matching dataset contains **3,732 raw rows**; **1 zero-price row** is excluded, leaving **3,731 rows** for cleaned analysis.
 
-**Validation result:** 3,732 source rows → **3,731 analytical rows** after removing 1 zero-price record. No nulls were found in the nine source columns in the validated dataset.
-
-## Core Business Questions & Findings
+## Business Questions & Findings
 
 | Query | Business question | Finding |
 |---|---|---|
-| Q1 | Which products have the highest discounts? | The highest discount is **51%**, seen on three Dukes Waffy wafer products. |
-| Q2 | Which high-MRP products are out of stock? | **8 SKU records** have MRP above ₹300 and are out of stock. The highest-MRP example is **Patanjali Cow's Ghee at ₹565**. |
-| Q3 | Which category has the highest estimated inventory revenue? | **Cooking Essentials and Munchies tie at ₹337,369 each**, calculated as discounted selling price × available quantity. |
-| Q4 | Which high-MRP products have discounts below 10%? | **82 SKU records** have MRP above ₹500 and discount below 10%. |
-| Q5 | Which category has the highest average discount? | **Fruits & Vegetables: 15.46% average discount**, followed by Meats, Fish & Eggs at 11.03%. |
-| Q6 | Which products have the lowest price per gram above 100g? | The lowest calculated value is **Vicks Cough Drops at about ₹0.017/g**. Treat this metric cautiously because the dataset mixes product/package units. |
-| Q7 | How is the SKU mix distributed by weight? | **3,392 Low**, **335 Medium**, and **4 Bulk** SKUs under the project's weight bands. |
-| Q8 | Which category holds the most inventory weight? | **Cooking Essentials and Munchies tie at 1,404.65 kg each**. |
+| Q1 | Which products have the highest discounts? | Highest observed discount is **51%**, led by three Dukes Waffy wafer products. |
+| Q2 | Which high-MRP products are out of stock? | **8 SKU records** meet out-of-stock + MRP above ₹300. Highest-MRP example: **Patanjali Cow's Ghee, ₹565**. |
+| Q3 | Which categories have the highest estimated inventory revenue? | **Cooking Essentials and Munchies tie at ₹337,369 each**. |
+| Q4 | Which products have MRP above ₹500 and discount below 10%? | **82 SKU records** meet this condition. |
+| Q5 | Which categories have the highest average discount? | **Fruits & Vegetables: 15.46% average discount**, the highest category average. |
+| Q6 | Which products have the lowest price per gram above 100g? | Lowest observed value: **₹0.0172/g** for Vicks Cough Drops Menthol. Interpret cautiously across product types. |
+| Q7 | How is the SKU mix distributed by weight band? | **3,392 Low**, **335 Medium**, **4 Bulk** records under the project's definitions. |
+| Q8 | Which categories hold the most inventory weight? | **Cooking Essentials and Munchies tie at 1,404.65 kg** each. |
 
-## Advanced SQL Questions & Findings
+## Advanced SQL Questions
 
-| Query | SQL technique | Business question | Finding |
-|---|---|---|---|
-| Q9 | CTE + RANK() | What are the top 3 products by estimated revenue within each category? | **Borges Extra Light Olive Oil Bottle** ranks #1 in both Cooking Essentials and Munchies at **₹8,394** estimated inventory revenue. Ties are preserved. |
-| Q10 | CTE + window SUM() | What share of estimated revenue comes from each category? | Cooking Essentials and Munchies each contribute **15.04%**; together they account for **30.08%** of estimated revenue. |
-| Q11 | CTE + running total | How quickly does revenue accumulate across ranked categories? | The top 5 categories accumulate about **64.23%** of the total estimated revenue. |
-| Q12 | Aggregation + stock comparison | Do in-stock and out-of-stock SKUs differ in average discount? | In-stock SKUs average **7.90%** discount vs **5.57%** for out-of-stock SKUs — a **2.34 percentage-point difference** in this snapshot. This is descriptive, not causal. |
-| Q13 | CTE + DENSE_RANK() | Which categories are important for both value and physical inventory? | Cooking Essentials and Munchies rank at the top for both estimated revenue and inventory weight. |
-| Q14 | Filtering | Which discounted products have zero available inventory? | **21 SKU records** have discounts of at least 20% while showing zero available quantity; the highest-discount examples reach **50%**. |
-| Q15 | CTE + JOIN | Which products contribute the largest share of their category revenue? | **Godrej Yummiez Chicken Punjabi Tikka** contributes **7.71%** of its category's estimated revenue in the validated snapshot. |
-| Q16 | Subquery + JOIN | Which expensive out-of-stock products are also above their category's average MRP? | **8 SKU records** meet the criteria; the highest-MRP example is **Patanjali Cow's Ghee at ₹565**. |
+| Query | Technique | Finding / purpose |
+|---|---|---|
+| Q9 | CTE + RANK | Returns the top 3 products by estimated inventory revenue within each category, preserving ties. |
+| Q10 | CTE + window aggregate | Calculates each category's share of total estimated inventory revenue. |
+| Q11 | CTE + running total | Builds cumulative estimated revenue after ranking categories by revenue. |
+| Q12 | GROUP BY | In-stock SKUs average **7.90%** discount vs **5.57%** for out-of-stock SKUs. Descriptive association only. |
+| Q13 | CTE + DENSE_RANK | Compares category revenue rank with inventory-weight rank. |
+| Q14 | Filtering | Finds **21 SKU records** with at least 20% discount and zero available quantity. |
+| Q15 | CTE + JOIN | Identifies products with the largest share of their own category's estimated revenue. |
+| Q16 | Subquery + JOIN | Finds high-MRP out-of-stock products priced above their category's average MRP. |
+
+## Key Insights
+
+- **Highest average discount:** Fruits & Vegetables — **15.46%**.
+- **Highest estimated inventory revenue:** Cooking Essentials and Munchies — **₹337,369 each**.
+- **Total estimated inventory revenue:** **₹22.43 lakh**, calculated as discounted selling price × available quantity. This is not actual sales revenue.
+- **High-MRP out-of-stock:** 8 SKU records satisfy the existing Q2 threshold; the highest-MRP example is Patanjali Cow's Ghee at **₹565**.
+- **Heaviest inventory:** Cooking Essentials and Munchies — **1,404.65 kg each**.
+- **Discount vs stock:** in-stock SKUs average **7.90%** discount versus **5.57%** for out-of-stock SKUs. This is an association, not a causal claim.
 
 ## Business Recommendations
 
-1. **Prioritise replenishment of high-MRP out-of-stock items.** Products such as Patanjali Cow's Ghee and MamyPoko Pants have relatively high ticket values and are unavailable in the snapshot.
-2. **Review promotions against stock availability.** 21 SKU records have discounts of at least 20% but zero available quantity. Discounting unavailable items can create a mismatch between promotion and fulfilment.
-3. **Use category-level inventory value and weight together.** Cooking Essentials and Munchies appear high on both dimensions, so they deserve attention in inventory planning and storage allocation.
-4. **Validate product/category mapping before operational use.** The source snapshot contains repeated product names across multiple category labels, producing identical category-level metrics in places. This may reflect the dataset construction rather than real Zepto category structure, so production decisions should use a deduplicated/validated source.
+1. **Review stock availability for high-value unavailable products.** High-MRP out-of-stock SKUs can be candidates for replenishment review.
+2. **Investigate discounted-but-unavailable SKUs.** The 21 records with at least 20% discount and zero available quantity are potential missed-sales cases.
+3. **Prioritize high-value categories for inventory monitoring.** Cooking Essentials and Munchies have the highest estimated inventory value and inventory weight in this dataset.
+4. **Use category-level discount analysis when reviewing promotions.** Fruits & Vegetables has the highest average discount, so promotion depth can be monitored alongside availability.
 
-## Important Dataset Limitation
+## SQL Concepts Demonstrated
 
-This is an **inventory snapshot**, not transaction-level order data. Therefore, "estimated revenue" means:
+- SELECT, WHERE, DISTINCT
+- GROUP BY, HAVING, ORDER BY, LIMIT
+- COUNT, SUM, AVG, ROUND
+- CASE WHEN and NULLIF
+- CTEs and subqueries
+- INNER JOIN
+- RANK and DENSE_RANK
+- Window functions and running totals
+- Business-oriented KPI calculations
 
-`discountedSellingPrice × availableQuantity`
+## Project Structure
 
-It is **not actual historical sales revenue**.
-
-Also, repeated product/category combinations appear in the source. The analysis intentionally reports what the dataset contains rather than silently deduplicating records.
-
-## Recommended Repository Structure
-
-```
+```text
 zepto-sql-analysis/
 ├── README.md
 ├── data/
-│   └── zepto_v2.csv
+│   └── README.md
 ├── queries/
 │   └── zepto_analysis.sql
 └── screenshots/
-    ├── q03-category-revenue.png
-    ├── q05-category-discount.png
-    ├── q09-top-products.png
-    ├── q10-revenue-share.png
-    ├── q12-discount-stock.png
-    ├── q14-discount-zero-stock.png
-    └── q16-high-mrp-oos.png
+    └── README.md
 ```
-
-The current repo does not commit the CSV; `data/README.md` explains where to get it and how the SQL expects it.
 
 ## How to Run
 
 1. Create a PostgreSQL database.
-2. Run the table-creation section of `queries/zepto_analysis.sql`.
-3. Put the CSV at `data/zepto_v2.csv`.
-4. Import it using pgAdmin or the commented PostgreSQL `COPY` command.
-5. Run the cleaning view section.
-6. Run Q1–Q16.
+2. Create the zepto table using the setup section in queries/zepto_analysis.sql.
+3. Place the source CSV at data/zepto_v2.csv.
+4. Import it with PostgreSQL COPY/\copy.
+5. Run queries/zepto_analysis.sql.
 
-## Skills Demonstrated
+## Limitations
 
-**SQL:** SELECT, WHERE, DISTINCT, GROUP BY, HAVING, ORDER BY, CASE, aggregates, NULLIF, CTEs, subqueries, JOINs, RANK, DENSE_RANK, running totals and window functions.
+- This is an inventory snapshot, not transactional sales data.
+- Estimated revenue means discounted selling price × available quantity, not realized revenue.
+- Repeated product names can occur across multiple category/SKU records.
+- Price-per-gram is not equally meaningful for every product type.
+- Findings describe this dataset snapshot and should not be generalized to Zepto's current business operations.
 
-**Analytics:** data cleaning, KPI-style aggregation, inventory analysis, pricing analysis, stock analysis, category comparison and business recommendations.
+## Screenshots to Add
+
+Recommended screenshots for the README:
+1. **Q3 — Category estimated revenue**
+2. **Q5 — Average discount by category**
+3. **Q8 — Inventory weight by category**
+4. **Q9 — Top 3 products per category**
+5. **Q10 — Revenue share by category**
+6. **Q12 — Discount vs stock status**
+7. **Q14 — Discounted but unavailable**
+8. **Q16 — High-MRP out-of-stock**
+
+For a compact recruiter README, use **Q3, Q5, Q9, Q10 and Q12**.
 
 ## Author
 
